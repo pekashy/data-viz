@@ -34,22 +34,27 @@ class Node:
 
 
 	def enumerateNode(self, num):
-		for i, child in enumerate(self.__children):
-			child.enumerateNode(num)
-			if(i == 0):
-				self.x = num[0]
-				num[0] += 1
-		
-		if not self.__children:
-			self.x = num[0]
+		self.x = num[0]
+		childList : list = list(self.__children)
+		if len(childList) == 1:
+			childList[0].enumerateNode(num)
+		elif len(childList) == 2:
+			childList[0].enumerateNode(num)
 			num[0] += 1
-	
+			childList[1].enumerateNode(num)
+			
 
 	def shift(self):
 		childList : list = list(self.__children)
-		for i in range(1, len(childList)):
-			shift = self.__getShift(childList[i-1].__getRightX(), childList[i].__getLeftX())
-			childList[i].__makeShift(-shift)
+		
+		for child in childList:
+			child.shift()
+
+		if len(childList) == 2:
+			shift = self.__getShift(childList[0].__getRightX(), childList[1].__getLeftX())
+			childList[1].__makeShift(shift)
+		
+		
 
 	def __makeShift(self, shift : int):
 		for child in self.__children:
@@ -58,7 +63,7 @@ class Node:
 
 
 	def __getShift(self, maxLeft : int, minRight : int) -> int:
-		return minRight - maxLeft + 2
+		return minRight - maxLeft - 1
 
 
 	def __getLeftX(self) -> int:
@@ -69,7 +74,7 @@ class Node:
 
 
 	def __getRightX(self) -> int:
-		if len(self.__children) > 1:
+		if len(self.__children) > 0:
 			return list(self.__children)[-1].__getRightX()
 		else:
 			return self.x
