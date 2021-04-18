@@ -100,10 +100,11 @@ class Graph:
         for rawNode in rawNodes:
             self.__insertNode(None, rawNode)
         self.__startEnumerate()
-        toggled : Set[Node] = set()
-        takenKoords : set = set()
-        for node in self.nodes:
-            node.toggle(toggled, takenKoords)
+        for i in range(20):
+            toggled : Set[Node] = set()
+            takenKoords : set = set()
+            for node in self.nodes:
+                node.toggle(toggled, takenKoords)
 
 
     def __startEnumerate(self):
@@ -181,7 +182,7 @@ def printg(graph: Graph):
     for node in graph.nodes:
         addNode(gr, node)
     networkx.draw(gr, networkx.get_node_attributes(
-        gr, 'loc'), with_labels=False, node_size=10)
+        gr, 'loc'), with_labels=False, node_size=20)
     plt.savefig('output.png')
 
 
