@@ -7,7 +7,7 @@ from queue import Queue
 from statistics import median
 
 DEFAULT_ENUMVAL: int = 1e12
-
+W : int = 3
 
 class Node:
     def __init__(self, val: int):
@@ -100,7 +100,7 @@ class Graph:
         for rawNode in rawNodes:
             self.__insertNode(None, rawNode)
         self.__startEnumerate()
-        for i in range(20):
+        for i in range(10000):
             toggled : Set[Node] = set()
             takenKoords : set = set()
             for node in self.nodes:
@@ -120,6 +120,7 @@ class Graph:
     def __levelEnumerate(self):
         q : Queue = Queue()
         maxlevel : int = 1
+        levelVacants : Dict[int : int] = dict()
         for i in reversed(range(0, len(self.sortedEnumeratedNodeList))):
             q.put((maxlevel, self.sortedEnumeratedNodeList[i]))
             while not q.empty():
@@ -128,6 +129,13 @@ class Graph:
                 n : Node = r[1]
                 if n.level != -1:
                     continue
+                if level not in levelVacants:
+                    levelVacants[level] = W
+
+                if levelVacants[level] == 0:
+                    q.put((level + 1, n))
+                    continue
+                levelVacants[level] -= 1
                 n.level = level
                 maxlevel = max(maxlevel, level)
                 for neighbor in n.getNeighbors():
