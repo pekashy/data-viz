@@ -14,7 +14,6 @@ class Node:
         self.__neighbors: Set[Node] = set()
         self.val: str = val
         self.level: int = -1
-        self.x: int = -1
         self.enumVal : float = DEFAULT_ENUMVAL
 
     def addNode(self, child):
@@ -23,7 +22,76 @@ class Node:
             child.__neighbors.add(self)
 
     def getNeighbors(self):
-        return self.__neighbors
+        return self.__neighbors        
+
+    def getChildren(self) -> list:
+        children : list = list()
+        for node in self.__neighbors:
+            if(node.level > self.level):
+                children.append(node)
+        return children
+
+
+    def getDummyNodesGenerated(self, sameLevelNode):
+        if self.level != sameLevelNode.level:
+            return 0
+        bNodeInArgPlacedOnTheLeft : bool = sameLevelNode.enumVal <= self.enumVal
+        
+        argNodeChildren : list = sameLevelNode.getChildren()
+        currentNodeChildren : list = self.getChildren()
+
+        dummyNodesGenerated : int = 0
+
+        for child in currentNodeChildren:
+            childX : int = child.enumVal
+
+            for argChild in argNodeChildren:
+                argChildX : int = argChild.enumVal
+
+                if bNodeInArgPlacedOnTheLeft:
+                    if argChildX >= childX:
+                        dummyNodesGenerated += 1
+                else: # on the right
+                    if argChildX <= childX:
+                        dummyNodesGenerated += 1
+
+        return dummyNodesGenerated
+
+    def getDummyNodeTotalNumber(self, newCoord, sameLevelNodes : list):
+        dummyNodesNum = 0
+        oldCoord = self.enumVal
+        self.enumVal = newCoord
+        for node in sameLevelNodes:
+            if self.enumVal == node.enumVal:
+                continue
+            dummyNodesNum += self.getDummyNodesGenerated(node) + abs(self.level - node.level) - 1
+        self.enumVal = oldCoord
+        return dummyNodesNum
+
+
+    def dummyToggle(self, takenKoords : set, sameLevelNodes : list):
+        takenKoords.remove(self.enumVal)
+        bestIResults = (self.enumVal, self.getDummyNodeTotalNumber(self.enumVal, sameLevelNodes))
+
+        for i in range(-W*10, W*10):
+            if self.enumVal + i in takenKoords:
+                continue
+            res : int = self.getDummyNodeTotalNumber(self.enumVal + i, sameLevelNodes)
+            if bestIResults[1] < res:
+                if bestIResults[0] in takenKoords:
+                    takenKoords.remove(bestIResults[0])
+                bestIResults = (self.enumVal + i, res)
+                takenKoords.add(bestIResults[0])
+
+            if bestIResults[1] == res and abs(self.enumVal + i) < abs(bestIResults[0]):
+                if bestIResults[0] in takenKoords:
+                    takenKoords.remove(bestIResults[0])
+                bestIResults = (self.enumVal + i, res)
+                takenKoords.add(bestIResults[0])
+
+        self.enumVal = bestIResults[0]
+        takenKoords.add(self.enumVal)
+
 
     def toggle(self, visited : set, takenKoords : set):
         if self in visited:
@@ -39,14 +107,16 @@ class Node:
         takenKoords.add((self.level, self.enumVal))
         bestKoord : int = int(median(neighVals))
         i : int = 0
+        # prevent collisions
         while (self.level, bestKoord + i) in takenKoords and (self.level, bestKoord - i) in takenKoords:
             i+=1
-        if (self.level, bestKoord + i) not in takenKoords:
-            self.enumVal = bestKoord + i
-            takenKoords.add((self.level, self.enumVal))
-        elif (self.level, bestKoord - i) not in takenKoords:
-            self.enumVal = bestKoord - i
-            takenKoords.add((self.level, self.enumVal))
+        
+        # choose empty one
+        finalBestCoord = bestKoord + i
+        if (self.level, bestKoord + i) in takenKoords:
+            finalBestCoord = bestKoord - i
+        self.enumVal = finalBestCoord
+        takenKoords.add((self.level, self.enumVal))
 
         for node in self.__neighbors:
             node.toggle(visited, takenKoords)
@@ -90,6 +160,7 @@ class Graph:
         self.root: Node = root
         self.nodes: Set[Node] = set()
         self.sortedEnumeratedNodeList : List[Node] = list()
+        self.levels : Dict[int, List[Node]] = dict()
 
     def parseGraphFromFile(self, graph_desctiption_filepath: str):
         parser = pygraphml.GraphMLParser()
@@ -100,7 +171,22 @@ class Graph:
         for rawNode in rawNodes:
             self.__insertNode(None, rawNode)
         self.__startEnumerate()
-        for i in range(10000):
+        for i in range(100):
+            toggled : Set[Node] = set()
+            takenKoords : set = set()
+            for node in self.nodes:
+                node.toggle(toggled, takenKoords)
+        
+        for i in range(10):
+            for level in self.levels:
+                takenKoords = set()
+                for node in self.levels[level]:
+                    takenKoords.add(node.enumVal)
+                for node in self.levels[level]:
+                    node.dummyToggle(takenKoords, self.levels[node.level])
+        
+        
+        for i in range(100):
             toggled : Set[Node] = set()
             takenKoords : set = set()
             for node in self.nodes:
@@ -131,12 +217,14 @@ class Graph:
                     continue
                 if level not in levelVacants:
                     levelVacants[level] = W
+                    self.levels[level] : List[Node] = list()
 
                 if levelVacants[level] == 0:
                     q.put((level + 1, n))
                     continue
                 levelVacants[level] -= 1
                 n.level = level
+                self.levels[level].append(n)
                 maxlevel = max(maxlevel, level)
                 for neighbor in n.getNeighbors():
                     q.put((level + 1, neighbor))
